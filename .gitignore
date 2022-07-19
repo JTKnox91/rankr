@@ -1,7 +1,6 @@
 # See https://www.dartlang.org/guides/libraries/private-files
 
-# Directory created by dartdoc
-# If you don't generate documentation locally you can remove this line.
+# Private credentials to not upload to GH
 bin/credentials.dart
 
 # Files and directories created by pub
