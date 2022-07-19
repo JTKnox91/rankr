@@ -6,10 +6,33 @@ import 'dart:io';
 
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
+import 'package:googleapis_auth/auth_io.dart';
+import 'package:googleapis/firestore/v1.dart';
+
+import 'credentials.dart';
 
 const htmlHeaders = <String, String>{
   'Content-type': 'text/html',
 };
+const jsonHeaders = <String, String>{
+  'Content-type': 'application/json',
+};
+
+Future<Response> _defaultHandler(Request request) async {
+  final credentials = getCredentials();
+  final client =
+      await clientViaServiceAccount(credentials, [FirestoreApi.datastoreScope]);
+  final firestoreApi = FirestoreApi(client);
+  
+  try {
+    // An arbitrary document id
+    final arbitraryDocPath = 'projects/rankr-ch-vote/databases/(default)/documents/election/lEU6p2oi6MeEsV708E1D';
+    final result = await firestoreApi.projects.databases.documents.get(arbitraryDocPath);
+    return Response.ok(result.toJson().toString(), headers: jsonHeaders);
+  } catch (e) {
+    return Response.internalServerError(body: 'An Error Occured:\n${e.toString()}', headers: htmlHeaders);
+  }
+}
 
 Future main() async {
   // If the "PORT" environment variable is set, listen to it. Otherwise, 8080.
@@ -21,12 +44,10 @@ Future main() async {
     // See https://pub.dev/documentation/shelf/latest/shelf/logRequests.html
     logRequests()
         // See https://pub.dev/documentation/shelf/latest/shelf/MiddlewareExtensions/addHandler.html
-        .addHandler(_helloWorldHandler),
+        .addHandler(_defaultHandler),
     InternetAddress.anyIPv4, // Allows external connections
     port,
   );
 
   print('Serving at http://${server.address.host}:${server.port}');
 }
-
-Response _helloWorldHandler(Request request) => Response.ok('Hello, World!', headers: htmlHeaders);
