@@ -9,6 +9,7 @@ import 'package:googleapis/firestore/v1.dart';
 import 'package:rankr/model/election.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
+import 'package:shelf_router/shelf_router.dart';
 
 import 'credentials.dart';
 
@@ -19,16 +20,26 @@ const jsonHeaders = <String, String>{
   'Content-type': 'application/json',
 };
 
-const arbitraryElectionId = 'yPR0HpuPaCoGqFbykAG4';
+// FYI, 'yPR0HpuPaCoGqFbykAG4' is an election ID is one is needed for local checks.
+
+late FirestoreApi firestoreApi;
 
 Future<Response> _defaultHandler(Request request) async {
-  final credentials = getCredentials();
-  final client =
-      await clientViaServiceAccount(credentials, [FirestoreApi.datastoreScope]);
-  final firestoreApi = FirestoreApi(client);
+  return Response.ok('Welcome the Rankr', headers: htmlHeaders);
+}
 
+Future<Response> _votingPageHandler(Request request, String electionId) async {
   try {
-    final election = await Election.getFromElectionId(firestoreApi, arbitraryElectionId);
+    final election = await Election.getFromElectionId(firestoreApi, electionId, ignoreVotes: true);
+    return Response.ok(election.toString(), headers: jsonHeaders);
+  } catch (e) {
+    return Response.internalServerError(body: 'An Error Occured:\n${e.toString()}', headers: htmlHeaders);
+  }
+}
+
+Future<Response> _resultsPageHandler(Request request, String electionId) async {
+  try {
+    final election = await Election.getFromElectionId(firestoreApi, electionId);
     return Response.ok(election.toString(), headers: jsonHeaders);
   } catch (e) {
     return Response.internalServerError(body: 'An Error Occured:\n${e.toString()}', headers: htmlHeaders);
@@ -40,12 +51,18 @@ Future main() async {
   // https://cloud.google.com/run/docs/reference/container-contract#port
   final port = int.parse(Platform.environment['PORT'] ?? '8080');
 
+  final dbClient =
+      await clientViaServiceAccount(getCredentials(), [FirestoreApi.datastoreScope]);
+  firestoreApi = FirestoreApi(dbClient);
+
+  final app = Router();
+  app.get('/<electionId>', _votingPageHandler);
+  app.get('/<electionId>/results', _resultsPageHandler);
+  app.get('/', _defaultHandler);
+
   // See https://pub.dev/documentation/shelf/latest/shelf_io/serve.html
   final server = await shelf_io.serve(
-    // See https://pub.dev/documentation/shelf/latest/shelf/logRequests.html
-    logRequests()
-        // See https://pub.dev/documentation/shelf/latest/shelf/MiddlewareExtensions/addHandler.html
-        .addHandler(_defaultHandler),
+    app,
     InternetAddress.anyIPv4, // Allows external connections
     port,
   );

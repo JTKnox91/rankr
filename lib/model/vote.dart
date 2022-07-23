@@ -18,6 +18,7 @@ class Vote {
     }).toString();
   }
 
+  /// Retrives all the vote documents for a given election ID and constructs an instances of this object from them.
   static Future<List<Vote>> listFromElectionId(FirestoreApi api, String electionId) {
     final electionDocName = '$projectDocumentBasePath/elections/$electionId';
     final votesCollectionFuture = api.projects.databases.documents.list(electionDocName, 'votes');

@@ -21,15 +21,18 @@ class Election {
     }).toString();
   }
 
-  static Future<Election> getFromElectionId(FirestoreApi api, String electionId) {
+  /// Retrieves the election document for a given ID and constructs an instance of this object from it.
+  /// 
+  /// If only the canidate names are needed, [ignoreVotes] can be used to speed up the query.
+  static Future<Election> getFromElectionId(FirestoreApi api, String electionId, {bool ignoreVotes = false}) {
     final electionDocName = '$projectDocumentBasePath/elections/$electionId';
     final electionDocFuture = api.projects.databases.documents.get(electionDocName);
-    final votesFuture = Vote.listFromElectionId(api, electionId);
+    final votesFuture = ignoreVotes ? Future.value(null) : Vote.listFromElectionId(api, electionId);
     return Future.wait([electionDocFuture, votesFuture]).then((futures) {
       final electionDoc = futures[0] as Document;
-      final votes = futures[1] as List<Vote>;
+      final votes = futures[1] as List<Vote>?;
       final electionName = electionDoc.fields![nameFieldName]?.stringValue ?? '';
-      return Election(electionName, {...Candidate.fromValues(electionDoc.fields![candidatesFieldName]!)}, votes);
+      return Election(electionName, {...Candidate.fromValues(electionDoc.fields![candidatesFieldName]!)}, votes ?? []);
     });
   }
 }
