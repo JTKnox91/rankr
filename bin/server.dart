@@ -4,10 +4,11 @@
 
 import 'dart:io';
 
-import 'package:shelf/shelf.dart';
-import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:googleapis/firestore/v1.dart';
+import 'package:rankr/model/election.dart';
+import 'package:shelf/shelf.dart';
+import 'package:shelf/shelf_io.dart' as shelf_io;
 
 import 'credentials.dart';
 
@@ -18,17 +19,17 @@ const jsonHeaders = <String, String>{
   'Content-type': 'application/json',
 };
 
+const arbitraryElectionId = 'yPR0HpuPaCoGqFbykAG4';
+
 Future<Response> _defaultHandler(Request request) async {
   final credentials = getCredentials();
   final client =
       await clientViaServiceAccount(credentials, [FirestoreApi.datastoreScope]);
   final firestoreApi = FirestoreApi(client);
-  
+
   try {
-    // An arbitrary document id
-    final arbitraryDocPath = 'projects/rankr-ch-vote/databases/(default)/documents/election/lEU6p2oi6MeEsV708E1D';
-    final result = await firestoreApi.projects.databases.documents.get(arbitraryDocPath);
-    return Response.ok(result.toJson().toString(), headers: jsonHeaders);
+    final election = await Election.getFromElectionId(firestoreApi, arbitraryElectionId);
+    return Response.ok(election.toString(), headers: jsonHeaders);
   } catch (e) {
     return Response.internalServerError(body: 'An Error Occured:\n${e.toString()}', headers: htmlHeaders);
   }

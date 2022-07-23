@@ -1,4 +1,4 @@
-name: server
+name: rankr
 publish_to: none # not intended for publication to pub.dev
 
 environment:
